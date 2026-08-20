@@ -1,0 +1,15 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "description": "Windows x64 desktop shell for DeepSeek Harness",
+  "version": "0.1.0-rc.8",
+  "private": true,
+  "type": "module",
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "tsdown",
+    "dist:win": "pwsh -NoProfile -File ../../scripts/build-windows-desktop.ps1"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "workspace:^"
+  }
+}
