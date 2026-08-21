@@ -14,8 +14,6 @@ The private `@deepseek-ai/dsh-desktop` application packages the built `web` prof
 
 The native Windows packaging script builds the repository, deploys the desktop package's production dependency closure, downloads the pinned Electron archive, and emits one extractable x64 zip. Building on Windows ensures native dependencies, including the PowerShell terminal backend, match the target platform.
 
-The `Windows Desktop` workflow exercises that native build on pull requests and relevant `master` changes. It inspects the archive, launches the packaged executable until its main window is responsive, closes the window, and requires a clean exit before retaining the archive. A manual `publish=true` dispatch from the matching `dsh-desktop-v<version>` tag creates the GitHub Release only after the build-and-test job succeeds; the protected `github-release` environment controls publication.
-
 ## Alternatives considered
 
 **A remote-only desktop shell.** Requiring an independently installed or hosted Harness server would make the executable a connection client rather than the standard local product and would leave server lifecycle management to the user.
@@ -26,4 +24,4 @@ The `Windows Desktop` workflow exercises that native build on pull requests and 
 
 ## Consequences
 
-The desktop client uses the same profile, credentials, sessions, settings, and loopback HTTP transport as `dsh web`, so plugins do not gain a desktop-only execution path. The distribution contains a Chromium runtime and is therefore larger than the CLI. Packaging requires network access to the pinned Electron GitHub release, publication requires an approved environment and an exact version tag, and the zip is unsigned until release infrastructure supplies code signing.
+The desktop client uses the same profile, credentials, sessions, settings, and loopback HTTP transport as `dsh web`, so plugins do not gain a desktop-only execution path. The distribution contains a Chromium runtime and is therefore larger than the CLI. Packaging requires network access to the pinned Electron GitHub release, and the zip is unsigned until release infrastructure supplies code signing.

@@ -12,5 +12,3 @@ pnpm run build:desktop:win
 ```
 
 该命令生成 `apps/desktop/dist/DeepSeek-Harness-windows-x64.zip`。解压后运行 `DeepSeek Harness.exe`；客户端与 CLI 使用相同的 `DSH_HOME` 存储 profile、凭据、会话和设置。构建过程会从 Electron 的 GitHub release 下载固定版本的运行时，因此需要网络访问。
-
-`Windows Desktop` GitHub Actions workflow 会在原生 Windows 上构建压缩包、验证必需文件、启动已打包的可执行文件、等待主窗口出现并将其正常关闭。Pull Request 与 `master` 上的相关变更会把通过验证的压缩包保存为 workflow artifact。发布 release 时，创建并推送 `dsh-desktop-v<apps/desktop package version>`，在该 tag 上以 `publish=true` dispatch workflow，并批准 `github-release` environment；发布 job 只使用成功的构建与测试 job 所生成的 artifact。

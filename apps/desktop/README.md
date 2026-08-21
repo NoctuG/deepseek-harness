@@ -12,5 +12,3 @@ pnpm run build:desktop:win
 ```
 
 The command writes `apps/desktop/dist/DeepSeek-Harness-windows-x64.zip`. Extract the archive and run `DeepSeek Harness.exe`; the client stores profiles, credentials, sessions, and settings under the same `DSH_HOME` used by the CLI. The build downloads the pinned Electron runtime from its GitHub release, so it requires network access.
-
-The `Windows Desktop` GitHub Actions workflow builds the archive on native Windows, verifies its required files, launches the packaged executable, waits for its main window, and closes it cleanly. Pull requests and relevant `master` changes retain the validated archive as a workflow artifact. To publish a release, create and push `dsh-desktop-v<apps/desktop package version>`, dispatch the workflow from that tag with `publish=true`, and approve the `github-release` environment; the publish job consumes only the artifact produced by the successful build-and-test job.
