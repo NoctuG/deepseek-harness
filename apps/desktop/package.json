@@ -4,7 +4,7 @@
   "version": "0.1.0-rc.8",
   "private": true,
   "type": "module",
-  "main": "lib/main.js",
+  "main": "dist/main.mjs",
   "scripts": {
     "build": "tsdown",
     "dist:win": "pwsh -NoProfile -File ../../scripts/build-windows-desktop.ps1"

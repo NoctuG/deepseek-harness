@@ -1,6 +1,10 @@
 $ErrorActionPreference = 'Stop'
 
-if (-not $IsWindows -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
+if (
+  -not $IsWindows -or
+  -not [Environment]::Is64BitOperatingSystem -or
+  [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne [System.Runtime.InteropServices.Architecture]::X64
+) {
   throw 'build-windows-desktop: run this command on 64-bit Windows'
 }
 
@@ -32,7 +36,7 @@ Remove-Item $electronZip
 
 Push-Location $root
 try {
-  pnpm --filter '@deepseek-ai/dsh-desktop' deploy --prod $app
+  pnpm --config.node-linker=hoisted --config.inject-workspace-packages=true --ignore-scripts --filter '@deepseek-ai/dsh-desktop' deploy --prod $app
   if ($LASTEXITCODE -ne 0) { throw "build-windows-desktop: deploy exited with $LASTEXITCODE" }
 } finally {
   Pop-Location
