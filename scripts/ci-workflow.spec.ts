@@ -418,6 +418,38 @@ describe('Issue lifecycle workflow', () => {
   })
 })
 
+describe('Windows desktop workflow', () => {
+  it('tests the packaged executable before an exact-tag GitHub Release publication', () => {
+    const workflow = loadWorkflow('.github/workflows/windows-desktop.yml')
+    const dispatch = workflowEvent(workflow, 'workflow_dispatch')
+    const build = workflowJob(workflow, 'build-and-test')
+    const publish = workflowJob(workflow, 'publish')
+    if (!isRecord(dispatch.inputs) || !isRecord(dispatch.inputs.publish)
+      || !Array.isArray(build.steps) || !Array.isArray(publish.steps)) {
+      throw new TypeError('Windows desktop workflow must define publication input and job steps')
+    }
+
+    expect(build['runs-on']).toBe('windows-2025')
+    expect(dispatch.inputs.publish).toMatchObject({ type: 'boolean', default: false })
+    expect(publish.needs).toBe('build-and-test')
+    expect(publish.if).toBe("github.event_name == 'workflow_dispatch' && inputs.publish")
+    expect(publish.environment).toBe('github-release')
+    expect(publish.permissions).toEqual({ contents: 'write' })
+
+    const buildCommands = build.steps.flatMap(step => (
+      isRecord(step) && typeof step.run === 'string' ? [step.run] : []
+    ))
+    expect(buildCommands).toContain('pnpm run build:desktop:win')
+    expect(buildCommands.some(command => command.includes('CloseMainWindow()'))).toBe(true)
+
+    const publishCommands = publish.steps.flatMap(step => (
+      isRecord(step) && typeof step.run === 'string' ? [step.run] : []
+    ))
+    expect(publishCommands.some(command => command.includes('refs/tags/dsh-desktop-v$VERSION'))).toBe(true)
+    expect(publishCommands.some(command => command.includes('gh release create'))).toBe(true)
+  })
+})
+
 describe('Git hooks', () => {
   it('leaves frozen Agent Note sidecars to the archive verifier', () => {
     const lefthook = loadWorkflow('lefthook.yml')

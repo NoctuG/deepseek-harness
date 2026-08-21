@@ -1,0 +1,138 @@
+name: Windows Desktop
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/windows-desktop.yml
+      - apps/desktop/**
+      - apps/cli/**
+      - packages/**
+      - scripts/build-windows-desktop.ps1
+      - package.json
+      - pnpm-lock.yaml
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/windows-desktop.yml
+      - apps/desktop/**
+      - apps/cli/**
+      - packages/**
+      - scripts/build-windows-desktop.ps1
+      - package.json
+      - pnpm-lock.yaml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the validated archive to a GitHub Release. Must run from a dsh-desktop-v* tag.
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    name: Build and test Windows x64 client
+    runs-on: windows-2025
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop archive
+        run: pnpm run build:desktop:win
+
+      - name: Resolve desktop version
+        id: version
+        run: |
+          $version = (Get-Content apps/desktop/package.json | ConvertFrom-Json).version
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Verify archive contents
+        run: |
+          $archive = 'apps/desktop/dist/DeepSeek-Harness-windows-x64.zip'
+          if (-not (Test-Path $archive)) { throw "Missing desktop archive: $archive" }
+          $unpacked = Join-Path $env:RUNNER_TEMP 'dsh-desktop-smoke'
+          Expand-Archive $archive $unpacked
+          foreach ($path in @(
+            'DeepSeek Harness.exe',
+            'resources/app/lib/main.js',
+            'resources/app/node_modules/@deepseek-ai/dsh/lib/bin.js'
+          )) {
+            if (-not (Test-Path (Join-Path $unpacked $path))) { throw "Desktop archive is missing $path" }
+          }
+          "DSH_DESKTOP_UNPACKED=$unpacked" >> $env:GITHUB_ENV
+
+      - name: Launch packaged client
+        run: |
+          $exe = Join-Path $env:DSH_DESKTOP_UNPACKED 'DeepSeek Harness.exe'
+          $process = Start-Process $exe -PassThru
+          Start-Sleep -Seconds 20
+          $process.Refresh()
+          if ($process.HasExited) { throw "Desktop client exited during startup with code $($process.ExitCode)" }
+          if (-not $process.CloseMainWindow()) { throw 'Desktop client did not expose a closable main window' }
+          if (-not $process.WaitForExit(15000)) {
+            $process.Kill()
+            throw 'Desktop client did not stop after its main window closed'
+          }
+          if ($process.ExitCode -ne 0) { throw "Desktop client exited with code $($process.ExitCode)" }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DeepSeek-Harness-windows-x64-${{ steps.version.outputs.version }}
+          path: apps/desktop/dist/DeepSeek-Harness-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub Release
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: build-and-test
+    runs-on: ubuntu-24.04
+    environment: github-release
+    permissions:
+      contents: write
+    steps:
+      - name: Authorize release tag
+        env:
+          VERSION: ${{ needs.build-and-test.outputs.version }}
+        run: |
+          expected="refs/tags/dsh-desktop-v$VERSION"
+          if [[ "$GITHUB_REF" != "$expected" ]]; then
+            echo "::error::Publication requires $expected; received $GITHUB_REF"
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: DeepSeek-Harness-windows-x64-${{ needs.build-and-test.outputs.version }}
+          path: dist
+
+      - name: Publish validated archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build-and-test.outputs.version }}
+        run: |
+          flags=(--verify-tag --generate-notes --title "DeepSeek Harness Desktop $VERSION")
+          if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" dist/DeepSeek-Harness-windows-x64.zip "${flags[@]}"

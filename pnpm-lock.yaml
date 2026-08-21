@@ -356,6 +356,12 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
 
+  apps/desktop:
+    dependencies:
+      '@deepseek-ai/dsh':
+        specifier: workspace:^
+        version: link:../cli
+
   apps/web:
     devDependencies:
       '@deepseek-ai/cordis-plugin-group':
