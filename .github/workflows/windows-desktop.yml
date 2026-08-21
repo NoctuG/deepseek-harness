@@ -76,7 +76,7 @@ jobs:
           Expand-Archive $archive $unpacked
           foreach ($path in @(
             'DeepSeek Harness.exe',
-            'resources/app/lib/main.js',
+            'resources/app/dist/main.mjs',
             'resources/app/node_modules/@deepseek-ai/dsh/lib/bin.js'
           )) {
             if (-not (Test-Path (Join-Path $unpacked $path))) { throw "Desktop archive is missing $path" }
